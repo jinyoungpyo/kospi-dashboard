@@ -35,9 +35,10 @@
   /* Cards */
   .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(5, 1fr);
     gap: 12px; margin-bottom: 28px;
   }
+  @media (max-width: 900px) { .cards { grid-template-columns: repeat(3, 1fr); } }
   @media (max-width: 520px) { .cards { grid-template-columns: repeat(2, 1fr); } }
   .card {
     background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
