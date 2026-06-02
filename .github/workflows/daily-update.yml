@@ -1,0 +1,104 @@
+name: daily-update
+
+on:
+  schedule:
+    - cron: '7 12 * * *'
+    - cron: '7 13 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Collect FreeSIS data
+        run: python src/collect_freesis.py
+
+      - name: Collect Naver investor data
+        run: python src/collect_naver_investor.py
+        continue-on-error: true
+
+      - name: Collect Naver KOSPI fallback (T+0 종가)
+        run: python src/collect_naver_kospi.py
+        continue-on-error: true
+
+      - name: Build dashboard data.json
+        run: python src/build_dashboard_data.py
+
+      - name: Commit changes if any
+        id: commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ dashboard/assets/data.json
+          if git diff --cached --quiet; then
+            echo "no changes — skipping commit"
+            echo "committed=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "data: daily update $(date -u +'%Y-%m-%d')"
+            for i in 1 2 3; do
+              if git push; then
+                echo "committed=true" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+              echo "push attempt $i failed — rebasing on origin/main and retrying"
+              git pull --rebase origin main || exit 1
+              sleep 3
+            done
+            echo "push failed after 3 attempts"
+            exit 1
+          fi
+
+      - name: Evaluate alert conditions
+        id: alert
+        run: python src/check_alerts.py
+        env:
+          SITE_URL: https://kospi-analysis.pages.dev/
+
+      - name: Send email (only if alert triggered)
+        if: steps.alert.outputs.send == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_HOST }}
+          server_port:    ${{ secrets.SMTP_PORT }}
+          username:       ${{ secrets.SMTP_USER }}
+          password:       ${{ secrets.SMTP_PASS }}
+          subject: "[KOSPI 알림] ${{ steps.alert.outputs.title }} - ${{ steps.alert.outputs.date_str }}"
+          to:    ${{ secrets.MAIL_TO }}
+          from:  ${{ secrets.MAIL_FROM != '' && secrets.MAIL_FROM || secrets.SMTP_USER }}
+          body:  ${{ steps.alert.outputs.body }}
+          convert_markdown: false
+
+      - name: Notify on workflow failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_HOST }}
+          server_port:    ${{ secrets.SMTP_PORT }}
+          username:       ${{ secrets.SMTP_USER }}
+          password:       ${{ secrets.SMTP_PASS }}
+          subject: "[KOSPI 알림] daily-update 워크플로 실패"
+          to:    ${{ secrets.MAIL_TO }}
+          from:  ${{ secrets.MAIL_FROM != '' && secrets.MAIL_FROM || secrets.SMTP_USER }}
+          body: |
+            daily-update 워크플로가 실패했습니다.
+            Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          convert_markdown: false

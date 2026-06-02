@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="KOSPI">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>KOSPI 시장 자금 분석</title>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1c2230; --border: #2a3340;
+    --text: #e6edf3; --muted: #8b9aad; --up: #ff5b5b; --down: #4d96ff;
+    --accent: #f5a623; --green: #3fb950; --purple: #d2a8ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard",
+                 "Malgun Gothic", sans-serif; -webkit-font-smoothing: antialiased;
+  }
+  header {
+    padding: 22px 24px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 20px; margin: 0; letter-spacing: -0.3px; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  header .updated { margin-left: auto; color: var(--muted); font-size: 12px; }
+  .wrap { padding: 18px 24px 60px; max-width: 1180px; margin: 0 auto; }
+
+  /* Cards */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px; margin-bottom: 28px;
+  }
+  @media (max-width: 520px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; cursor: pointer; transition: border-color .15s;
+  }
+  .card:hover { border-color: #3d4a5c; }
+  .card.active { border-color: var(--accent); }
+  .card .label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .card .value { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
+  .card .unit { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 2px; }
+  .card .chg { font-size: 12px; margin-top: 5px; font-variant-numeric: tabular-nums; }
+  .card .chg.up { color: var(--up); }
+  .card .chg.down { color: var(--down); }
+  .card .date { color: var(--muted); font-size: 11px; margin-top: 6px; }
+
+  /* Section */
+  .section { margin-bottom: 32px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .toolbar .title { font-size: 15px; font-weight: 600; margin-right: auto; }
+  .toolbar .desc { font-size: 12px; color: var(--muted); margin-top: -8px; margin-bottom: 10px; }
+  .rangebtns button, .lagbtns button {
+    background: var(--panel2); color: var(--muted); border: 1px solid var(--border);
+    border-radius: 7px; padding: 5px 11px; font-size: 12.5px; cursor: pointer;
+  }
+  .rangebtns button.active, .lagbtns button.active {
+    background: var(--accent); color: #1a1205; border-color: var(--accent); font-weight: 600;
+  }
+  .chartbox {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 6px 4px;
+  }
+  .grid2 {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+
+  /* Insight boxes */
+  .insight-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;
+  }
+  @media (max-width: 700px) { .insight-grid { grid-template-columns: 1fr; } }
+  .insight-box {
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+  }
+  .insight-box .ititle { font-size: 13px; font-weight: 600; color: var(--green); margin-bottom: 8px; }
+  .insight-box ul { margin: 0; padding-left: 16px; color: var(--text); font-size: 13px; line-height: 1.8; }
+  .insight-box .foot { font-size: 11.5px; color: var(--muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+  /* Correlation / anomaly table */
+  .tbl-wrap { overflow-x: auto; }
+  .corr-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .corr-table th {
+    background: var(--panel2); padding: 10px 14px; text-align: left;
+    color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border);
+  }
+  .corr-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); }
+  .corr-table tr:last-child td { border-bottom: none; }
+  .corr-table tr:hover td { background: var(--panel2); }
+  .r-pos { color: var(--up); font-weight: 700; }
+  .r-neg { color: var(--down); font-weight: 700; }
+  .r-neu { color: var(--muted); font-weight: 700; }
+
+  /* Overlay */
+  #overlay {
+    position: fixed; inset: 0; background: var(--bg); display: flex;
+    align-items: center; justify-content: center; color: var(--muted); font-size: 14px; z-index: 9;
+  }
+  .err { color: var(--up); }
+  footer { color: var(--muted); font-size: 11.5px; margin-top: 18px; line-height: 1.7; }
+  a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<div id="overlay">데이터를 불러오는 중…</div>
+
+<header>
+  <h1>KOSPI 시장 자금 분석</h1>
+  <span class="sub" id="period"></span>
+  <span class="updated" id="updated"></span>
+</header>
+
+<div class="wrap">
+
+  <!-- KPI 카드 -->
+  <div class="cards" id="cards"></div>
+
+  <!-- ① 개별 지표 추이 -->
+  <div class="section">
+    <div class="toolbar">
+      <span class="title" id="chartTitle"></span>
+      <div class="rangebtns" id="rangebtns">
+        <button data-d="30">1M</button>
+        <button data-d="90">3M</button>
+        <button data-d="180">6M</button>
+        <button data-d="365" class="active">1Y</button>
+        <button data-d="0">전체</button>
+      </div>
+    </div>
+    <div class="chartbox"><div id="chart"></div></div>
+  </div>
+
+  <!-- ② 예탁금 vs 거래대금 비교 -->
+  <div class="section">
+    <div class="toolbar">
+      <span class="title">예탁금 vs 거래대금 비교</span>
+      <div class="lagbtns" id="lagbtns">
+        <button data-lag="0">D+0</button>
+        <button data-lag="1">D+1</button>
+        <button data-lag="2" class="active">D+2</button>
+      </div>
+      <div class="rangebtns" id="rangebtns2">
+        <button data-d="90">3M</button>
+        <button data-d="180">6M</button>
+        <button data-d="365" class="active">1Y</button>
+        <button data-d="0">전체</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:-6px 0 12px">
+      예탁금은 전영업일 마감 기준, 거래대금은 당일 기준, 결제는 <b style="color:var(--text)">T+2</b>임.
+      D+N 선택 시 거래대금 라인을 N일 뒤로 shift해 결제 시점에서 비교함.
+    </p>
+    <div class="chartbox"><div id="chart-dual"></div></div>
+  </div>
+
+  <!-- ③ 자금 회전율 -->
+  <div class="section">
+    <div class="toolbar">
+      <span class="title">자금 회전율 (거래대금 / 예탁금 %)</span>
+      <div class="rangebtns" id="rangebtns3">
+        <button data-d="90">3M</button>
+        <button data-d="180">6M</button>
+        <button data-d="365" class="active">1Y</button>
+        <button data-d="0">전체</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:-6px 0 12px">
+      예탁금 대비 그날 매매된 비율. 값이 높을수록 자금이 활발하게 회전함.
+    </p>
+    <div class="chartbox"><div id="chart-turnover"></div></div>
+  </div>
+
+  <!-- ④ KOSPI ↔ 예탁금 상관관계 (구간별) -->
+  <div class="section">
+    <div class="toolbar">
+      <span class="title">KOSPI 지수 ↔ 예탁금 상관관계</span>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:-6px 0 14px">
+      국면별 Pearson 상관계수 비교.
+      <b style="color:var(--text)">r</b>은 두 시계열 원본 기준,
+      <b style="color:var(--text)">Δr</b>은 일별 변화량 기준임.
+      두 지표가 같이 우상향이라 단순 r은 추세 때문에 자동으로 높게 나옴 — 본질은 Δr.
+    </p>
+    <div class="tbl-wrap" style="margin-bottom:20px">
+      <table class="corr-table">
+        <thead>
+          <tr>
+            <th>구간</th><th>기간</th>
+            <th style="text-align:right">r</th>
+            <th style="text-align:right">Δr</th>
+            <th style="text-align:right">표본수</th>
+            <th>의미</th>
+          </tr>
+        </thead>
+        <tbody id="phase_tbody"></tbody>
+      </table>
+    </div>
+    <div class="toolbar" style="margin-bottom:10px">
+      <span class="title" style="font-size:14px">30일 롤링 Pearson r (KOSPI vs 예탁금)</span>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:-6px 0 12px">
+      30 거래일 윈도우로 매 시점의 동조성 변화. 0 위는 양의 동조, 0 아래는 역상관.
+    </p>
+    <div class="chartbox"><div id="chart-rolling"></div></div>
+  </div>
+
+  <!-- ⑤ 5대 자금/신용 지표 × KOSPI -->
+  <div class="section">
+    <div class="toolbar">
+      <span class="title">5대 자금/신용 지표 × KOSPI 상관관계</span>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:-6px 0 14px">
+      예탁금·파생예수금·RP매도잔고는 <b style="color:var(--text)">대기성 자금</b>,
+      신용거래융자·증권담보융자는 <b style="color:var(--text)">레버리지 자금</b>임.
+    </p>
+
+    <div class="insight-grid">
+      <div class="insight-box">
+        <div class="ititle">① 가장 강한 KOSPI 동조</div>
+        <ul>
+          <li>RP매도잔고 &nbsp;<span style="color:var(--muted)">r = +0.768</span></li>
+          <li>예탁금 &nbsp;<span style="color:var(--muted)">r = +0.807</span></li>
+          <li>신용거래융자 &nbsp;<span style="color:var(--muted)">r = +0.906</span></li>
+          <li><b>파생예수금 &nbsp;<span style="color:var(--green)">r = +0.954</span></b></li>
+        </ul>
+        <div class="foot">파생예수금이 KOSPI 추세에 가장 민감함</div>
+      </div>
+      <div class="insight-box">
+        <div class="ititle">② 증권담보융자는 KOSPI와 무관</div>
+        <ul>
+          <li>신용거래융자와 Δr &nbsp;<span style="color:var(--muted)">+0.477 (동행)</span></li>
+          <li><b>KOSPI와 전체 r &nbsp;<span style="color:var(--down)">−0.019</span></b></li>
+        </ul>
+        <div class="foot">별도 신용 사이클로 움직임</div>
+      </div>
+      <div class="insight-box">
+        <div class="ititle">③ 모든 지표가 KOSPI에 후행</div>
+        <ul>
+          <li>파생예수금 &nbsp;<span style="color:var(--muted)">+1일 후 최대 r</span></li>
+          <li>예탁금 &nbsp;<span style="color:var(--muted)">+2일 후</span></li>
+          <li>신용거래융자 &nbsp;<span style="color:var(--muted)">+3일 후</span></li>
+          <li><b>KOSPI가 먼저 움직이고 자금이 따라옴</b></li>
+        </ul>
+        <div class="foot">"예탁금이 선행지표" 가설은 이 기간 데이터로 성립 안 함</div>
+      </div>
+      <div class="insight-box">
+        <div class="ititle">④ 조정장 부호 반전 패턴</div>
+        <ul>
+          <li>신용거래융자 Δr &nbsp;<span style="color:var(--muted)">+0.17 (느리게 빠짐)</span></li>
+          <li>RP매도잔고 Δr &nbsp;<span style="color:var(--muted)">+0.45 (회피처)</span></li>
+          <li>예탁금 Δr &nbsp;<span style="color:var(--down)">−0.36 (대기성)</span></li>
+          <li><b>파생예수금 Δr &nbsp;<span style="color:var(--down)">−0.49 (가장 또렷)</span></b></li>
+        </ul>
+        <div class="foot">대기성 자금은 조정 시 KOSPI와 역행</div>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--muted)">
+        표 A. 정적 r — KOSPI × 각 지표 (전체 + 구간)
+      </div>
+      <table class="corr-table">
+        <thead>
+          <tr>
+            <th>구간</th><th>기준</th>
+            <th style="text-align:right">예탁금</th>
+            <th style="text-align:right">파생예수금</th>
+            <th style="text-align:right">RP매도잔고</th>
+            <th style="text-align:right">신용거래융자</th>
+            <th style="text-align:right">증권담보융자</th>
+          </tr>
+        </thead>
+        <tbody id="five_static_tbody"></tbody>
+      </table>
+      <p style="font-size:11.5px;color:var(--muted);margin-top:8px">
+        |r| ≥ 0.7 강한 동조 · 0.4~0.7 중간 · &lt;0.4 약함 (음수는 역상관). Δr은 일별 변화량 기준.
+      </p>
+    </div>
+  </div>
+
+  <!-- ⑥ 이상치 탐지 -->
+  <div class="section">
+    <div class="toolbar">
+      <span class="title">이상치 탐지 (30일 롤링 z-score)</span>
+      <div class="rangebtns" id="threshbtns">
+        <button data-z="2.0">z ≥ 2.0</button>
+        <button data-z="2.5" class="active">z ≥ 2.5</button>
+        <button data-z="3.0">z ≥ 3.0</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="corr-table">
+        <thead>
+          <tr>
+            <th>날짜</th><th>지표</th><th>값</th><th>전일 대비</th><th>z-score</th>
+          </tr>
+        </thead>
+        <tbody id="anomaly-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    출처: <a href="https://freesis.kofia.or.kr" target="_blank" rel="noopener">금융투자협회 FreeSIS</a>
+    · 네이버 금융 (T+0 보강)
+    · 매일 21:00(KST) 자동 갱신
+    · <span id="footer-date"></span>
+  </footer>
+</div>
+
+<script>
+// ── 데이터 필드 정의 (assets/data.json의 필드명과 일치) ──────────
+const INDICATORS = [
+  { key: "KOSPI지수",          label: "KOSPI 지수",      type: "index",  color: "#f5a623" },
+  { key: "투자자예탁금",        label: "투자자예탁금",    type: "krw_mn", color: "#4d96ff" },
+  { key: "신용잔고",            label: "신용잔고",        type: "krw_mn", color: "#ff5b5b" },
+  { key: "대차잔고",            label: "대차잔고",        type: "krw_mn", color: "#d2a8ff" },
+  { key: "거래대금",            label: "거래대금",        type: "krw_mn", color: "#f5a623" },
+  { key: "파생예수금",          label: "파생상품예수금",  type: "krw_mn", color: "#14b8a6" },
+  { key: "RP매도잔고",          label: "RP매도잔고",      type: "krw_mn", color: "#6366f1" },
+  { key: "증권담보융자",        label: "증권담보융자",    type: "krw_mn", color: "#94a3b8" },
+  { key: "신용_시총비율_pct",   label: "신용/시총 비율",  type: "pct",    color: "#ff5b5b" },
+  { key: "외국인_비중_pct",     label: "외국인 비중",     type: "pct",    color: "#0891b2" },
+  { key: "외국인_순매수_억",    label: "외국인 순매수",   type: "eok",    color: "#0891b2" },
+];
+
+const FIVE_ITEMS = [
+  { key: "투자자예탁금",  label: "예탁금" },
+  { key: "파생예수금",    label: "파생예수금" },
+  { key: "RP매도잔고",    label: "RP매도잔고" },
+  { key: "신용잔고",      label: "신용거래융자" },
+  { key: "증권담보융자",  label: "증권담보융자" },
+];
+
+const PHASES = [
+  { name: "전체",     start: "2026-01-02", end: "2026-05-30", meaning: "추세만 같이 우상향, 일별 변화는 거의 무관" },
+  { name: "1차 상승", start: "2026-01-02", end: "2026-02-27", meaning: "지수 오른 날엔 예탁금 빠짐 — 매수 결제로 자금 유출" },
+  { name: "조정",     start: "2026-03-02", end: "2026-03-31", meaning: "지수 하락 시 예탁금 증가 — 대기성 자금화" },
+  { name: "2차 상승", start: "2026-04-01", end: "2026-05-30", meaning: "r·Δr 둘 다 양수 — 신규 자금 유입이 지수 견인" },
+];
+
+const ANOMALY_KEYS = [
+  { key: "투자자예탁금", label: "투자자예탁금" },
+  { key: "거래대금",     label: "거래대금" },
+  { key: "신용잔고",     label: "신용잔고" },
+  { key: "대차잔고",     label: "대차잔고" },
+  { key: "KOSPI지수",    label: "KOSPI 지수" },
+];
+
+// ── 포맷터 ───────────────────────────────────────────────────────
+// 입력: 백만원 → 조원 표시
+function fmtKRWmn(v) {
+  if (v == null) return "–";
+  const jo = v / 1_000_000;
+  return jo >= 100 ? jo.toFixed(0) : jo.toFixed(1);
+}
+function fmtIndex(v) {
+  return v == null ? "–" : v.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtPct(v) {
+  return v == null ? "–" : v.toFixed(2);
+}
+// 입력: 억원
+function fmtEok(v) {
+  if (v == null) return "–";
+  const sign = v < 0 ? "-" : "";
+  const a = Math.abs(v);
+  return sign + (a >= 10000 ? (a / 10000).toFixed(1) + "조" : a.toLocaleString("ko-KR") + "억");
+}
+
+function fmtVal(ind, v) {
+  if (ind.type === "krw_mn") return fmtKRWmn(v);
+  if (ind.type === "index")  return fmtIndex(v);
+  if (ind.type === "pct")    return fmtPct(v);
+  if (ind.type === "eok")    return fmtEok(v);
+  return v ?? "–";
+}
+function unitOf(ind) {
+  if (ind.type === "krw_mn") return "조원";
+  if (ind.type === "index")  return "p";
+  if (ind.type === "pct")    return "%";
+  if (ind.type === "eok")    return "억원";
+  return "";
+}
+
+// ApexCharts용 툴팁 포맷터
+function tooltipFmt(ind) {
+  if (ind.type === "krw_mn") return v => v == null ? "–" : v.toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " 조원";
+  if (ind.type === "index")  return v => v == null ? "–" : v.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " p";
+  if (ind.type === "pct")    return v => v == null ? "–" : v.toFixed(2) + "%";
+  if (ind.type === "eok")    return v => {
+    if (v == null) return "–";
+    const sign = v < 0 ? "-" : (v > 0 ? "+" : "");
+    const a = Math.abs(v);
+    return sign + (a >= 10000 ? (a / 10000).toFixed(1) + "조" : a.toLocaleString("ko-KR") + "억");
+  };
+  return v => v ?? "–";
+}
+// Y축 라벨 포맷터
+function yAxisFmt(ind) {
+  if (ind.type === "krw_mn") return v => v.toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+  if (ind.type === "index")  return v => v.toLocaleString("ko-KR", { maximumFractionDigits: 0 });
+  if (ind.type === "pct")    return v => v.toFixed(1) + "%";
+  if (ind.type === "eok")    return v => { const a = Math.abs(v); return (v < 0 ? "-" : "") + (a >= 10000 ? (a/10000).toFixed(0) + "조" : a.toFixed(0) + "억"); };
+  return v => v;
+}
+
+// 백만원 → 조원 스케일 (ApexCharts series용)
+function toScale(ind, v) {
+  if (v == null) return null;
+  if (ind.type === "krw_mn") return +(v / 1_000_000).toFixed(4);
+  return v;
+}
+
+// ── 통계 함수 ─────────────────────────────────────────────────────
+function pearson(xs, ys) {
+  const n = Math.min(xs.length, ys.length);
+  if (n < 3) return NaN;
+  let mx = 0, my = 0;
+  for (let i = 0; i < n; i++) { mx += xs[i]; my += ys[i]; }
+  mx /= n; my /= n;
+  let num = 0, dx2 = 0, dy2 = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - mx, dy = ys[i] - my;
+    num += dx * dy; dx2 += dx * dx; dy2 += dy * dy;
+  }
+  return (dx2 === 0 || dy2 === 0) ? NaN : num / Math.sqrt(dx2 * dy2);
+}
+
+function pearsonPaired(xs, ys) {
+  const a = [], b = [];
+  for (let i = 0; i < xs.length; i++) {
+    if (xs[i] != null && ys[i] != null && !isNaN(xs[i]) && !isNaN(ys[i])) {
+      a.push(xs[i]); b.push(ys[i]);
+    }
+  }
+  return pearson(a, b);
+}
+
+function diffSeries(arr) {
+  const out = [];
+  for (let i = 1; i < arr.length; i++) out.push(arr[i] - arr[i - 1]);
+  return out;
+}
+
+function rollingPearson(xs, ys, win) {
+  const out = new Array(xs.length).fill(null);
+  for (let i = win - 1; i < xs.length; i++) {
+    out[i] = pearson(xs.slice(i - win + 1, i + 1), ys.slice(i - win + 1, i + 1));
+  }
+  return out;
+}
+
+function sliceRows(rows, days) {
+  return days > 0 ? rows.slice(-Math.min(rows.length, days)) : rows;
+}
+
+// ── 상태 ──────────────────────────────────────────────────────────
+let ROWS = null;
+let current = "투자자예탁금";
+let rangeDays = 365, rangeDays2 = 365, rangeDays3 = 365;
+let lagDays = 2;
+let anomalyThreshold = 2.5;
+let chart = null, chartDual = null, chartTurnover = null, chartRolling = null;
+
+// ── 마지막 유효값 2개 ────────────────────────────────────────────
+function lastTwo(key) {
+  let latest = null, prev = null, date = null;
+  for (let i = ROWS.length - 1; i >= 0; i--) {
+    if (ROWS[i][key] != null) {
+      if (latest == null) { latest = ROWS[i][key]; date = ROWS[i].date; }
+      else { prev = ROWS[i][key]; break; }
+    }
+  }
+  return { latest, prev, date };
+}
+
+// ── 데이터 로드 ──────────────────────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch("assets/data.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("data.json HTTP " + res.status);
+    const j = await res.json();
+    ROWS = j.rows;
+    document.getElementById("period").textContent =
+      `${j.range.start} ~ ${j.range.end} (${ROWS.length} 거래일)`;
+    document.getElementById("updated").textContent =
+      "최종 데이터: " + j.range.end;
+    document.getElementById("footer-date").textContent =
+      "최종 데이터: " + j.range.end;
+  } catch (e) {
+    document.getElementById("overlay").innerHTML =
+      '<span class="err">데이터를 불러오지 못했습니다: ' + e.message + '</span>';
+    return;
+  }
+  document.getElementById("overlay").style.display = "none";
+
+  renderCards();
+  bindRange("#rangebtns",  v => { rangeDays  = v; drawChart(); });
+  bindRange("#rangebtns2", v => { rangeDays2 = v; drawDual(); });
+  bindRange("#rangebtns3", v => { rangeDays3 = v; drawTurnover(); });
+  bindLag();
+  bindThreshold();
+  selectIndicator("투자자예탁금");
+  drawDual();
+  drawTurnover();
+  buildKospiCorr();
+  buildFiveFactorAnalysis();
+  renderAnomalies();
+}
+
+// ── KPI 카드 ─────────────────────────────────────────────────────
+function renderCards() {
+  const box = document.getElementById("cards");
+  box.innerHTML = "";
+  for (const ind of INDICATORS) {
+    const { latest, prev, date } = lastTwo(ind.key);
+    if (latest == null) continue;
+    const chg = prev != null ? latest - prev : null;
+    const pct = (chg != null && prev) ? chg / prev * 100 : null;
+    const dir = chg == null ? "" : chg >= 0 ? "up" : "down";
+    const arrow = chg == null ? "" : chg >= 0 ? "▲" : "▼";
+    const chgTxt = chg == null ? "" :
+      `${arrow} ${fmtVal(ind, Math.abs(chg))}${unitOf(ind)} (${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%)`;
+    const el = document.createElement("div");
+    el.className = "card" + (ind.key === current ? " active" : "");
+    el.dataset.key = ind.key;
+    const asOf = date ? date.slice(5).replace("-", "/") + " 기준" : "";
+    el.innerHTML =
+      `<div class="label">${ind.label} <span style="font-size:10px;color:var(--muted)">(${asOf})</span></div>
+       <div class="value">${fmtVal(ind, latest)}<span class="unit">${unitOf(ind)}</span></div>
+       <div class="chg ${dir}">${chgTxt || "–"} <span style="color:var(--muted)">(전일대비)</span></div>`;
+    el.onclick = () => selectIndicator(ind.key);
+    box.appendChild(el);
+  }
+}
+
+// ── Range / Lag 버튼 ─────────────────────────────────────────────
+function bindRange(selector, cb) {
+  document.querySelectorAll(selector + " button").forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll(selector + " button").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      cb(parseInt(b.dataset.d, 10));
+    };
+  });
+}
+
+function bindLag() {
+  document.querySelectorAll("#lagbtns button").forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll("#lagbtns button").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      lagDays = parseInt(b.dataset.lag, 10);
+      drawDual();
+    };
+  });
+}
+
+// ── ① 개별 지표 차트 ─────────────────────────────────────────────
+function selectIndicator(key) {
+  current = key;
+  document.querySelectorAll(".card").forEach(c =>
+    c.classList.toggle("active", c.dataset.key === key));
+  drawChart();
+}
+
+function drawChart() {
+  const ind = INDICATORS.find(i => i.key === current);
+  const unitLabel = ind.type === "krw_mn" ? "조원" : ind.type === "pct" ? "%" : ind.type === "eok" ? "억원" : "p";
+  document.getElementById("chartTitle").textContent = `${ind.label} 추이 (${unitLabel})`;
+
+  let rows = ROWS.filter(r => r[current] != null);
+  rows = sliceRows(rows, rangeDays);
+  const data = rows.map(r => [new Date(r.date).getTime(), toScale(ind, r[current])]);
+
+  const isBar = ind.type === "eok";
+  const opts = {
+    chart: {
+      type: isBar ? "bar" : "area", height: 400, animations: { enabled: false },
+      toolbar: { show: true, tools: { download: true, zoom: true, pan: true, reset: true, selection: false, zoomin: true, zoomout: true } },
+      background: "transparent", foreColor: "#8b9aad",
+    },
+    theme: { mode: "dark" },
+    series: [{ name: ind.label, data }],
+    colors: [ind.color],
+    stroke: isBar ? { show: false } : { curve: "straight", width: 2 },
+    fill: isBar
+      ? { type: "solid" }
+      : { type: "gradient", gradient: { shadeIntensity: 0.4, opacityFrom: 0.3, opacityTo: 0.02, stops: [0, 100] } },
+    plotOptions: isBar ? {
+      bar: {
+        columnWidth: "80%",
+        colors: {
+          ranges: [
+            { from: -Infinity, to: 0, color: "#4d96ff" },
+            { from: 0, to: Infinity, color: "#ff5b5b" },
+          ],
+        },
+      },
+    } : {},
+    dataLabels: { enabled: false },
+    grid: { borderColor: "#2a3340", strokeDashArray: 3 },
+    xaxis: { type: "datetime", labels: { datetimeUTC: false } },
+    yaxis: { labels: { formatter: yAxisFmt(ind) } },
+    tooltip: {
+      x: { format: "yyyy-MM-dd" },
+      y: { formatter: tooltipFmt(ind) },
+    },
+  };
+  if (chart) chart.destroy();
+  chart = new ApexCharts(document.querySelector("#chart"), opts);
+  chart.render();
+}
+
+// ── ② 예탁금 vs 거래대금 이중축 ──────────────────────────────────
+function shiftSeries(arr, lag) {
+  if (lag <= 0) return arr.slice();
+  return [...Array(lag).fill(null), ...arr.slice(0, -lag)];
+}
+
+function drawDual() {
+  let rows = ROWS.filter(r => r["투자자예탁금"] != null);
+  rows = sliceRows(rows, rangeDays2);
+
+  const labels = rows.map(r => new Date(r.date).getTime());
+  const deposit = rows.map(r => toScale({ type: "krw_mn" }, r["투자자예탁금"]));
+  const value   = rows.map(r => toScale({ type: "krw_mn" }, r["거래대금"]));
+  const shifted = shiftSeries(value, lagDays);
+
+  const opts = {
+    chart: {
+      type: "line", height: 340, animations: { enabled: false },
+      toolbar: { show: true }, background: "transparent", foreColor: "#8b9aad",
+    },
+    theme: { mode: "dark" },
+    series: [
+      { name: "예탁금", data: labels.map((t, i) => [t, deposit[i]]) },
+      { name: `거래대금 (D+${lagDays})`, data: labels.map((t, i) => [t, shifted[i]]) },
+    ],
+    colors: ["#4d96ff", "#f5a623"],
+    stroke: { curve: "straight", width: [2, 2], dashArray: [0, 5] },
+    dataLabels: { enabled: false },
+    grid: { borderColor: "#2a3340", strokeDashArray: 3 },
+    xaxis: { type: "datetime", labels: { datetimeUTC: false } },
+    yaxis: [
+      {
+        seriesName: "예탁금",
+        title: { text: "예탁금 (조원)", style: { color: "#4d96ff" } },
+        labels: { formatter: v => v == null ? "" : v.toFixed(0) + "조" },
+      },
+      {
+        seriesName: `거래대금 (D+${lagDays})`, opposite: true,
+        title: { text: "거래대금 (조원)", style: { color: "#f5a623" } },
+        labels: { formatter: v => v == null ? "" : v.toFixed(0) + "조" },
+      },
+    ],
+    tooltip: {
+      x: { format: "yyyy-MM-dd" }, shared: true,
+      y: { formatter: v => v == null ? "–" : v.toLocaleString("ko-KR", { maximumFractionDigits: 1 }) + " 조원" },
+    },
+    legend: { position: "top" },
+  };
+  if (chartDual) chartDual.destroy();
+  chartDual = new ApexCharts(document.querySelector("#chart-dual"), opts);
+  chartDual.render();
+}
+
+// ── ③ 자금 회전율 ────────────────────────────────────────────────
+function drawTurnover() {
+  let rows = ROWS.filter(r => r["투자자예탁금"] != null && r["거래대금"] != null);
+  rows = sliceRows(rows, rangeDays3);
+  const data = rows.map(r => [
+    new Date(r.date).getTime(),
+    +((r["거래대금"] / r["투자자예탁금"]) * 100).toFixed(2),
+  ]);
+
+  const opts = {
+    chart: {
+      type: "area", height: 260, animations: { enabled: false },
+      toolbar: { show: false }, background: "transparent", foreColor: "#8b9aad",
+    },
+    theme: { mode: "dark" },
+    series: [{ name: "자금 회전율", data }],
+    colors: ["#3fb950"],
+    stroke: { curve: "straight", width: 2 },
+    fill: { type: "gradient", gradient: { shadeIntensity: 0.4, opacityFrom: 0.3, opacityTo: 0.02, stops: [0, 100] } },
+    dataLabels: { enabled: false },
+    grid: { borderColor: "#2a3340", strokeDashArray: 3 },
+    xaxis: { type: "datetime", labels: { datetimeUTC: false } },
+    yaxis: { labels: { formatter: v => v.toFixed(1) + "%" } },
+    tooltip: { x: { format: "yyyy-MM-dd" }, y: { formatter: v => v.toFixed(2) + "%" } },
+  };
+  if (chartTurnover) chartTurnover.destroy();
+  chartTurnover = new ApexCharts(document.querySelector("#chart-turnover"), opts);
+  chartTurnover.render();
+}
+
+// ── ④ 구간별 상관관계 + 30일 롤링 r ─────────────────────────────
+function rClass(r) {
+  if (r == null || isNaN(r)) return "r-neu";
+  if (r < 0) return "r-neg";
+  if (Math.abs(r) >= 0.7) return "r-pos";
+  if (Math.abs(r) >= 0.4) return "";
+  return "r-neu";
+}
+const fmtR = v => (v == null || isNaN(v)) ? "—" : v.toFixed(3);
+
+function buildKospiCorr() {
+  const tbody = document.getElementById("phase_tbody");
+  // 마지막 날짜로 전체/2차 상승 end 업데이트
+  const lastDate = ROWS[ROWS.length - 1]?.date || "2026-05-30";
+  PHASES[0].end = lastDate;
+  PHASES[3].end = lastDate;
+
+  tbody.innerHTML = PHASES.map(ph => {
+    const subset = ROWS.filter(r => r.date >= ph.start && r.date <= ph.end);
+    const xs = subset.map(r => r["KOSPI지수"]).filter(v => v != null);
+    const ys = subset.map(r => r["투자자예탁금"]).filter(v => v != null);
+    const len = Math.min(xs.length, ys.length);
+    const r  = pearson(xs.slice(-len), ys.slice(-len));
+    const dr = pearson(diffSeries(xs.slice(-len)), diffSeries(ys.slice(-len)));
+    return `<tr>
+      <td style="font-weight:600">${ph.name}</td>
+      <td style="font-size:12px;color:var(--muted)">${ph.start.slice(5)} ~ ${ph.end.slice(5)}</td>
+      <td style="text-align:right" class="${rClass(r)}">${fmtR(r)}</td>
+      <td style="text-align:right" class="${rClass(dr)}">${fmtR(dr)}</td>
+      <td style="text-align:right;color:var(--muted)">${subset.length}</td>
+      <td style="font-size:12px;color:var(--muted)">${ph.meaning}</td>
+    </tr>`;
+  }).join("");
+
+  // 30일 롤링 r
+  const validRows = ROWS.filter(r => r["KOSPI지수"] != null && r["투자자예탁금"] != null);
+  const labels = validRows.map(r => new Date(r.date).getTime());
+  const xs = validRows.map(r => r["KOSPI지수"]);
+  const ys = validRows.map(r => r["투자자예탁금"]);
+  const rollR  = rollingPearson(xs, ys, 30);
+  const dxs = diffSeries(xs);
+  const dys = diffSeries(ys);
+  const rollDr = [null, ...rollingPearson(dxs, dys, 30)];
+
+  const opts = {
+    chart: {
+      type: "line", height: 280, animations: { enabled: false },
+      toolbar: { show: false }, background: "transparent", foreColor: "#8b9aad",
+    },
+    theme: { mode: "dark" },
+    series: [
+      { name: "r (원본)", data: labels.map((t, i) => [t, rollR[i]]) },
+      { name: "Δr (일별 변화량)", data: labels.map((t, i) => [t, rollDr[i]]) },
+    ],
+    colors: ["#4d96ff", "#d2a8ff"],
+    stroke: { curve: "straight", width: [2, 2], dashArray: [0, 5] },
+    dataLabels: { enabled: false },
+    grid: { borderColor: "#2a3340", strokeDashArray: 3 },
+    annotations: {
+      yaxis: [
+        { y: 0, borderColor: "#8b9aad", strokeDashArray: 4,
+          label: { text: "r = 0", style: { background: "#1c2230", color: "#8b9aad", fontSize: "11px" } } },
+        { y:  0.5, borderColor: "#3fb950", strokeDashArray: 4, opacity: 0.4 },
+        { y: -0.5, borderColor: "#ff5b5b", strokeDashArray: 4, opacity: 0.4 },
+      ],
+    },
+    xaxis: { type: "datetime", labels: { datetimeUTC: false } },
+    yaxis: {
+      min: -1, max: 1, tickAmount: 4,
+      labels: { formatter: v => v.toFixed(1) },
+    },
+    tooltip: {
+      x: { format: "yyyy-MM-dd" }, shared: true,
+      y: { formatter: v => v == null ? "—" : v.toFixed(3) },
+    },
+    legend: { position: "top", labels: { colors: ["#4d96ff", "#d2a8ff"] } },
+  };
+  if (chartRolling) chartRolling.destroy();
+  chartRolling = new ApexCharts(document.querySelector("#chart-rolling"), opts);
+  chartRolling.render();
+}
+
+// ── ⑤ 5대 지표 × KOSPI 분석 ─────────────────────────────────────
+function buildFiveFactorAnalysis() {
+  const tbody = document.getElementById("five_static_tbody");
+  const lastDate = ROWS[ROWS.length - 1]?.date || "2026-05-30";
+  PHASES[0].end = lastDate;
+  PHASES[3].end = lastDate;
+
+  const staticRows = [];
+  PHASES.forEach(ph => {
+    const subset = ROWS.filter(r => r.date >= ph.start && r.date <= ph.end);
+    const sxs  = subset.map(r => r["KOSPI지수"]);
+    const sdxs = diffSeries(sxs);
+    const rCells  = FIVE_ITEMS.map(it => pearsonPaired(sxs,  subset.map(r => r[it.key])));
+    const drCells = FIVE_ITEMS.map(it => pearsonPaired(sdxs, diffSeries(subset.map(r => r[it.key]))));
+    const period = `${ph.start.slice(5)} ~ ${ph.end.slice(5)}`;
+    staticRows.push(`
+      <tr>
+        <td style="font-weight:600" rowspan="2">${ph.name}<div style="font-size:11px;font-weight:400;color:var(--muted)">${period}</div></td>
+        <td style="color:var(--muted);font-size:12px">r</td>
+        ${rCells.map(v => `<td style="text-align:right" class="${rClass(v)}">${fmtR(v)}</td>`).join("")}
+      </tr>
+      <tr>
+        <td style="color:var(--muted);font-size:12px">Δr</td>
+        ${drCells.map(v => `<td style="text-align:right" class="${rClass(v)}">${fmtR(v)}</td>`).join("")}
+      </tr>
+    `);
+  });
+  tbody.innerHTML = staticRows.join("");
+}
+
+// ── ⑥ 이상치 탐지 ────────────────────────────────────────────────
+function detectAnomalies(key, win = 30, threshold = anomalyThreshold) {
+  const rows = ROWS.filter(r => r[key] != null);
+  const results = [];
+  for (let i = win; i < rows.length; i++) {
+    const vals = rows.slice(i - win, i).map(r => r[key]);
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const std  = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length);
+    if (std === 0) continue;
+    const z = (rows[i][key] - mean) / std;
+    if (Math.abs(z) >= threshold) {
+      const prev = rows[i - 1]?.[key];
+      const pct  = prev ? (rows[i][key] - prev) / prev * 100 : null;
+      results.push({ date: rows[i].date, value: rows[i][key], z, key, pct });
+    }
+  }
+  return results;
+}
+
+function bindThreshold() {
+  document.querySelectorAll("#threshbtns button").forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll("#threshbtns button").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      anomalyThreshold = parseFloat(b.dataset.z);
+      renderAnomalies();
+    };
+  });
+}
+
+function renderAnomalies() {
+  const tbody = document.getElementById("anomaly-tbody");
+  tbody.innerHTML = "";
+  const all = [];
+  for (const item of ANOMALY_KEYS) {
+    for (const a of detectAnomalies(item.key)) {
+      all.push({ ...a, label: item.label });
+    }
+  }
+  all.sort((a, b) => b.date.localeCompare(a.date) || Math.abs(b.z) - Math.abs(a.z));
+
+  if (all.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">감지된 이상치가 없습니다</td></tr>`;
+    return;
+  }
+  for (const a of all.slice(0, 60)) {
+    const ind  = INDICATORS.find(i => i.key === a.key) || { type: "krw_mn", key: a.key };
+    const pctStr = a.pct != null
+      ? `<span class="${a.pct >= 0 ? "r-pos" : "r-neg"}">${a.pct >= 0 ? "▲" : "▼"} ${Math.abs(a.pct).toFixed(2)}%</span>`
+      : "–";
+    const zStr = (a.z >= 0 ? "+" : "") + a.z.toFixed(2);
+    const zClass = Math.abs(a.z) >= 3 ? (a.z > 0 ? "r-pos" : "r-neg") : "r-neu";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="font-variant-numeric:tabular-nums">${a.date}</td>
+      <td><strong>${a.label}</strong></td>
+      <td style="color:var(--muted);font-variant-numeric:tabular-nums">${fmtVal(ind, a.value)} ${unitOf(ind)}</td>
+      <td>${pctStr}</td>
+      <td class="${zClass}" style="font-variant-numeric:tabular-nums">${zStr}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+init().catch(e => {
+  document.getElementById("overlay").innerHTML =
+    '<span class="err">로드 실패: ' + e.message + '</span>';
+});
+</script>
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/service-worker.js");
+  }
+</script>
+</body>
+</html>
