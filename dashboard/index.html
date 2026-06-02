@@ -213,60 +213,59 @@
     <div class="chartbox"><div id="chart-rolling"></div></div>
   </div>
 
-  <!-- ⑤ 5대 자금/신용 지표 × KOSPI -->
+  <!-- ⑤ 대기성 자금 3대 지표 × KOSPI -->
   <div class="section">
     <div class="toolbar">
-      <span class="title">5대 자금/신용 지표 × KOSPI 상관관계</span>
+      <span class="title">3대 대기성 자금 × KOSPI 상관관계</span>
     </div>
     <p style="font-size:12px;color:var(--muted);margin:-6px 0 14px">
-      예탁금·파생예수금·RP매도잔고는 <b style="color:var(--text)">대기성 자금</b>,
-      신용거래융자·증권담보융자는 <b style="color:var(--text)">레버리지 자금</b>임.
+      예탁금·파생예수금·RP매도잔고는 모두 <b style="color:var(--text)">대기성 자금</b>으로,
+      시장 진입을 기다리는 투자자 자금의 성격을 공유함.
+      <b style="color:var(--text)">r</b>은 원본 시계열, <b style="color:var(--text)">Δr</b>은 일별 변화량 기준.
     </p>
 
     <div class="insight-grid">
       <div class="insight-box">
-        <div class="ititle">① 가장 강한 KOSPI 동조</div>
+        <div class="ititle">① 대기성 자금 KOSPI 동조 순위</div>
         <ul>
           <li>RP매도잔고 &nbsp;<span style="color:var(--muted)">r = +0.768</span></li>
           <li>예탁금 &nbsp;<span style="color:var(--muted)">r = +0.807</span></li>
-          <li>신용거래융자 &nbsp;<span style="color:var(--muted)">r = +0.906</span></li>
           <li><b>파생예수금 &nbsp;<span style="color:var(--green)">r = +0.954</span></b></li>
         </ul>
-        <div class="foot">파생예수금이 KOSPI 추세에 가장 민감함</div>
+        <div class="foot">파생예수금이 KOSPI 추세에 가장 민감하게 반응</div>
       </div>
       <div class="insight-box">
-        <div class="ititle">② 증권담보융자는 KOSPI와 무관</div>
+        <div class="ititle">② 조정장 부호 반전 패턴</div>
         <ul>
-          <li>신용거래융자와 Δr &nbsp;<span style="color:var(--muted)">+0.477 (동행)</span></li>
-          <li><b>KOSPI와 전체 r &nbsp;<span style="color:var(--down)">−0.019</span></b></li>
-        </ul>
-        <div class="foot">별도 신용 사이클로 움직임</div>
-      </div>
-      <div class="insight-box">
-        <div class="ititle">③ 모든 지표가 KOSPI에 후행</div>
-        <ul>
-          <li>파생예수금 &nbsp;<span style="color:var(--muted)">+1일 후 최대 r</span></li>
-          <li>예탁금 &nbsp;<span style="color:var(--muted)">+2일 후</span></li>
-          <li>신용거래융자 &nbsp;<span style="color:var(--muted)">+3일 후</span></li>
-          <li><b>KOSPI가 먼저 움직이고 자금이 따라옴</b></li>
-        </ul>
-        <div class="foot">"예탁금이 선행지표" 가설은 이 기간 데이터로 성립 안 함</div>
-      </div>
-      <div class="insight-box">
-        <div class="ititle">④ 조정장 부호 반전 패턴</div>
-        <ul>
-          <li>신용거래융자 Δr &nbsp;<span style="color:var(--muted)">+0.17 (느리게 빠짐)</span></li>
-          <li>RP매도잔고 Δr &nbsp;<span style="color:var(--muted)">+0.45 (회피처)</span></li>
-          <li>예탁금 Δr &nbsp;<span style="color:var(--down)">−0.36 (대기성)</span></li>
+          <li>RP매도잔고 Δr &nbsp;<span style="color:var(--muted)">+0.45 (조정 시 회피처)</span></li>
+          <li>예탁금 Δr &nbsp;<span style="color:var(--down)">−0.36 (대기성 전환)</span></li>
           <li><b>파생예수금 Δr &nbsp;<span style="color:var(--down)">−0.49 (가장 또렷)</span></b></li>
         </ul>
-        <div class="foot">대기성 자금은 조정 시 KOSPI와 역행</div>
+        <div class="foot">예탁금·파생예수금은 조정 시 KOSPI와 역행, RP는 회피처로 유입</div>
+      </div>
+      <div class="insight-box">
+        <div class="ititle">③ 세 지표 모두 KOSPI에 후행</div>
+        <ul>
+          <li>파생예수금 &nbsp;<span style="color:var(--muted)">+1일 후 최대 r</span></li>
+          <li>예탁금 &nbsp;<span style="color:var(--muted)">+2일 후 최대 r</span></li>
+          <li>RP매도잔고 &nbsp;<span style="color:var(--muted)">즉각 반응</span></li>
+        </ul>
+        <div class="foot">KOSPI가 먼저 움직이고 자금이 따라옴 — 선행지표 아님</div>
+      </div>
+      <div class="insight-box">
+        <div class="ititle">④ 2차 상승(4~5월)의 특징</div>
+        <ul>
+          <li>r·Δr 둘 다 <span style="color:var(--green)">양수</span> — 신규 자금 유입이 지수 견인</li>
+          <li>1차 상승 때는 Δr 음수 (매수 결제 유출)</li>
+          <li>조정기엔 예탁금·파생 Δr 모두 음수 전환</li>
+        </ul>
+        <div class="foot">구간별로 자금과 KOSPI의 관계가 달라짐 — 아래 표 참조</div>
       </div>
     </div>
 
     <div class="tbl-wrap">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--muted)">
-        표 A. 정적 r — KOSPI × 각 지표 (전체 + 구간)
+        표 A. 정적 r — KOSPI × 대기성 자금 3대 지표 (전체 + 구간)
       </div>
       <table class="corr-table">
         <thead>
@@ -275,8 +274,6 @@
             <th style="text-align:right">예탁금</th>
             <th style="text-align:right">파생예수금</th>
             <th style="text-align:right">RP매도잔고</th>
-            <th style="text-align:right">신용거래융자</th>
-            <th style="text-align:right">증권담보융자</th>
           </tr>
         </thead>
         <tbody id="five_static_tbody"></tbody>
@@ -337,8 +334,6 @@ const FIVE_ITEMS = [
   { key: "투자자예탁금",  label: "예탁금" },
   { key: "파생예수금",    label: "파생예수금" },
   { key: "RP매도잔고",    label: "RP매도잔고" },
-  { key: "신용잔고",      label: "신용거래융자" },
-  { key: "증권담보융자",  label: "증권담보융자" },
 ];
 
 const PHASES = [
