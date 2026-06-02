@@ -284,28 +284,6 @@
     </div>
   </div>
 
-  <!-- ⑥ 이상치 탐지 -->
-  <div class="section">
-    <div class="toolbar">
-      <span class="title">이상치 탐지 (30일 롤링 z-score)</span>
-      <div class="rangebtns" id="threshbtns">
-        <button data-z="2.0">z ≥ 2.0</button>
-        <button data-z="2.5" class="active">z ≥ 2.5</button>
-        <button data-z="3.0">z ≥ 3.0</button>
-      </div>
-    </div>
-    <div class="tbl-wrap">
-      <table class="corr-table">
-        <thead>
-          <tr>
-            <th>날짜</th><th>지표</th><th>값</th><th>전일 대비</th><th>z-score</th>
-          </tr>
-        </thead>
-        <tbody id="anomaly-tbody"></tbody>
-      </table>
-    </div>
-  </div>
-
   <footer>
     출처: <a href="https://freesis.kofia.or.kr" target="_blank" rel="noopener">금융투자협회 FreeSIS</a>
     · 네이버 금융 (T+0 보강)
@@ -340,14 +318,6 @@ const PHASES = [
   { name: "1차 상승", start: "2026-01-02", end: "2026-02-27", meaning: "지수 오른 날엔 예탁금 빠짐 — 매수 결제로 자금 유출" },
   { name: "조정",     start: "2026-03-02", end: "2026-03-31", meaning: "지수 하락 시 예탁금 증가 — 대기성 자금화" },
   { name: "2차 상승", start: "2026-04-01", end: "2026-05-30", meaning: "r·Δr 둘 다 양수 — 신규 자금 유입이 지수 견인" },
-];
-
-const ANOMALY_KEYS = [
-  { key: "투자자예탁금", label: "투자자예탁금" },
-  { key: "거래대금",     label: "거래대금" },
-  { key: "신용잔고",     label: "신용잔고" },
-  { key: "대차잔고",     label: "대차잔고" },
-  { key: "KOSPI지수",    label: "KOSPI 지수" },
 ];
 
 // ── 포맷터 ───────────────────────────────────────────────────────
@@ -463,7 +433,6 @@ let ROWS = null;
 let current = "투자자예탁금";
 let rangeDays = 365, rangeDays2 = 365, rangeDays3 = 365;
 let lagDays = 2;
-let anomalyThreshold = 2.5;
 let chart = null, chartDual = null, chartTurnover = null, chartRolling = null;
 
 // ── 마지막 유효값 2개 ────────────────────────────────────────────
@@ -503,13 +472,11 @@ async function init() {
   bindRange("#rangebtns2", v => { rangeDays2 = v; drawDual(); });
   bindRange("#rangebtns3", v => { rangeDays3 = v; drawTurnover(); });
   bindLag();
-  bindThreshold();
   selectIndicator("투자자예탁금");
   drawDual();
   drawTurnover();
   buildKospiCorr();
   buildFiveFactorAnalysis();
-  renderAnomalies();
 }
 
 // ── KPI 카드 ─────────────────────────────────────────────────────
@@ -809,70 +776,6 @@ function buildFiveFactorAnalysis() {
     `);
   });
   tbody.innerHTML = staticRows.join("");
-}
-
-// ── ⑥ 이상치 탐지 ────────────────────────────────────────────────
-function detectAnomalies(key, win = 30, threshold = anomalyThreshold) {
-  const rows = ROWS.filter(r => r[key] != null);
-  const results = [];
-  for (let i = win; i < rows.length; i++) {
-    const vals = rows.slice(i - win, i).map(r => r[key]);
-    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-    const std  = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length);
-    if (std === 0) continue;
-    const z = (rows[i][key] - mean) / std;
-    if (Math.abs(z) >= threshold) {
-      const prev = rows[i - 1]?.[key];
-      const pct  = prev ? (rows[i][key] - prev) / prev * 100 : null;
-      results.push({ date: rows[i].date, value: rows[i][key], z, key, pct });
-    }
-  }
-  return results;
-}
-
-function bindThreshold() {
-  document.querySelectorAll("#threshbtns button").forEach(b => {
-    b.onclick = () => {
-      document.querySelectorAll("#threshbtns button").forEach(x => x.classList.remove("active"));
-      b.classList.add("active");
-      anomalyThreshold = parseFloat(b.dataset.z);
-      renderAnomalies();
-    };
-  });
-}
-
-function renderAnomalies() {
-  const tbody = document.getElementById("anomaly-tbody");
-  tbody.innerHTML = "";
-  const all = [];
-  for (const item of ANOMALY_KEYS) {
-    for (const a of detectAnomalies(item.key)) {
-      all.push({ ...a, label: item.label });
-    }
-  }
-  all.sort((a, b) => b.date.localeCompare(a.date) || Math.abs(b.z) - Math.abs(a.z));
-
-  if (all.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">감지된 이상치가 없습니다</td></tr>`;
-    return;
-  }
-  for (const a of all.slice(0, 60)) {
-    const ind  = INDICATORS.find(i => i.key === a.key) || { type: "krw_mn", key: a.key };
-    const pctStr = a.pct != null
-      ? `<span class="${a.pct >= 0 ? "r-pos" : "r-neg"}">${a.pct >= 0 ? "▲" : "▼"} ${Math.abs(a.pct).toFixed(2)}%</span>`
-      : "–";
-    const zStr = (a.z >= 0 ? "+" : "") + a.z.toFixed(2);
-    const zClass = Math.abs(a.z) >= 3 ? (a.z > 0 ? "r-pos" : "r-neg") : "r-neu";
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td style="font-variant-numeric:tabular-nums">${a.date}</td>
-      <td><strong>${a.label}</strong></td>
-      <td style="color:var(--muted);font-variant-numeric:tabular-nums">${fmtVal(ind, a.value)} ${unitOf(ind)}</td>
-      <td>${pctStr}</td>
-      <td class="${zClass}" style="font-variant-numeric:tabular-nums">${zStr}</td>
-    `;
-    tbody.appendChild(tr);
-  }
 }
 
 init().catch(e => {
