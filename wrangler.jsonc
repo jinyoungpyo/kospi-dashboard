@@ -1,5 +1,5 @@
 {
-  "name": "kospi-dashboard",
+  "name": "kospi-dashboard-pages",
   "compatibility_date": "2024-09-23",
   "assets": {
     "directory": "./dashboard"
